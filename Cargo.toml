@@ -1,7 +1,7 @@
 [package]
-name = "eframe_template"
+name = "gift_exchange_wheel"
 version = "0.1.0"
-authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
+authors = ["TD19"]
 edition = "2021"
 rust-version = "1.65"
 
@@ -17,6 +17,8 @@ eframe = { version = "0.20.0", default-features = false, features = [
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
+rand = "0.8.5"
+getrandom = { version = "0.2.8", features = ["js"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
