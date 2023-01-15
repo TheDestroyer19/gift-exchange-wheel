@@ -1,6 +1,6 @@
 use eframe::emath;
 use eframe::epaint::TextShape;
-use egui::{Align, Color32, Frame, Layout, Pos2, Rect, RichText, Shape, Stroke, Vec2, Align2, FontId};
+use egui::{Align, Color32, Frame, Layout, Pos2, Rect, RichText, Shape, Stroke, Vec2, FontId};
 
 use crate::hat::{DrawError, Hat, Pair, Person};
 use crate::valid_pair;
@@ -8,10 +8,12 @@ use crate::valid_pair;
 use super::UiExtensions;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub(crate) struct WheelPage {
     hat: Hat,
     drawn_names: Vec<Pair>,
     error_message: Option<String>,
+    angle: f32,
 }
 
 impl WheelPage {
@@ -94,7 +96,7 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
 
     Frame::canvas(ui.style()).show(ui, |ui| {
         ui.ctx().request_repaint();
-        let time = ui.input().time;
+        //let time = ui.input().time;
 
         let smaller_dimension = ui.available_width().min(ui.available_height());
         
@@ -112,7 +114,7 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
         let inner_angle = std::f32::consts::TAU / wheel.hat.receivers().len() as f32;
 
         for (idx, person) in wheel.hat.receivers().iter().enumerate() {
-            let start_angle = time as f32 + inner_angle * idx as f32;
+            let start_angle = wheel.angle + inner_angle * idx as f32;
             let r = smaller_dimension / 2.0 - 5.0;
             shapes.push(wedge(center, r, start_angle, inner_angle, colors[idx % colors.len()], stroke));
 

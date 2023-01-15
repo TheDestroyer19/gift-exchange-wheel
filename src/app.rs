@@ -12,12 +12,6 @@ pub struct GiftExchangeApp {
     page: Page,
     people_page: PeoplePage,
     wheel_page: WheelPage,
-    // Example stuff:
-    label: String,
-
-    // this how you opt-out of serialization of a member
-    #[serde(skip)]
-    value: f32,
 }
 
 impl Default for GiftExchangeApp {
@@ -27,9 +21,6 @@ impl Default for GiftExchangeApp {
             page: Page::default(),
             people_page: PeoplePage::default(),
             wheel_page: WheelPage::default(),
-            // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
         }
     }
 }

@@ -37,6 +37,7 @@ pub(crate) fn display_about(ctx: &egui::Context) {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub(crate) struct PeoplePage {
     pub(crate) person: Person,
 }
