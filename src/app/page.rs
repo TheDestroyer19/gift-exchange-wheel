@@ -32,7 +32,6 @@ pub(crate) fn display_about(ctx: &egui::Context) {
                 );
                 ui.label(".");
             });
-            ui.label("Second item");
         });
     });
 }

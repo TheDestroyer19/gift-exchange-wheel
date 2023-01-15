@@ -39,6 +39,7 @@ impl GiftExchangeApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+        cc.egui_ctx.set_visuals(egui::Visuals::light());
 
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
@@ -59,11 +60,6 @@ impl eframe::App for GiftExchangeApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Examples of how to create different panels and windows.
-        // Pick whichever suits you.
-        // Tip: a good default choice is to just keep the `CentralPanel`.
-        // For inspiration and more examples, go to https://emilk.github.io/egui
-
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.heading("Gift Exchange Wheel");
 
@@ -76,44 +72,8 @@ impl eframe::App for GiftExchangeApp {
 
         match self.page {
             Page::People => page::dipslay_people(&mut self.people_page, &mut self.people, ctx),
-            Page::Wheel => page::display_wheel(&mut self.wheel_page, &self.people, ctx),
+            Page::Wheel => self.wheel_page.display(&self.people, ctx),
             Page::About => page::display_about(ctx),
         }
-
-        // let Self { label, value, .. } = self;
-        // egui::SidePanel::left("side_panel").show(ctx, |ui| {
-        //     ui.heading("Participants");
-
-        //     ui.horizontal(|ui| {
-        //         ui.label("Write something: ");
-        //         ui.text_edit_singleline(label);
-        //     });
-
-        //     ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-        //     if ui.button("Increment").clicked() {
-        //         *value += 1.0;
-        //     }
-        // });
-
-        // egui::CentralPanel::default().show(ctx, |ui| {
-        //     // The central panel the region left after adding TopPanel's and SidePanel's
-
-        //     ui.heading("eframe template");
-        //     ui.hyperlink("https://github.com/emilk/eframe_template");
-        //     ui.add(egui::github_link_file!(
-        //         "https://github.com/emilk/eframe_template/blob/master/",
-        //         "Source code."
-        //     ));
-        //
-        // });
-
-        // if false {
-        //     egui::Window::new("Window").show(ctx, |ui| {
-        //         ui.label("Windows can be moved by dragging them.");
-        //         ui.label("They are automatically sized based on contents.");
-        //         ui.label("You can turn on resizing and scrolling if you like.");
-        //         ui.label("You would normally choose either panels OR windows.");
-        //     });
-        // }
     }
 }

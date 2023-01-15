@@ -12,10 +12,30 @@ pub(crate) struct WheelPage {
     error_message: Option<String>,
 }
 
-pub(crate) fn display_wheel(wheel: &mut WheelPage, people: &[Person], ctx: &egui::Context) {
-    egui::SidePanel::left("wheel-left").show(ctx, |ui| side_panel(ui, wheel));
+impl WheelPage {
+    fn reset(&mut self, people: &[Person]) {
+        self.error_message = None;
+        self.hat = Hat::with_people(people.into());
+        self.drawn_names.clear();
+    }
 
-    egui::TopBottomPanel::bottom("wheel-bottom").show(ctx, |ui| bottom_panel(ui, wheel, people));
+    fn spin(&mut self) {
+        self.error_message = None;
+        match self.hat.draw_name(valid_pair) {
+            Ok(pair) => self.drawn_names.push(pair),
+            Err(DrawError::NoGivers) => self.error_message = Some("No one left to assign".into()),
+            //This case needs to have some 'just draw someone' option
+            Err(DrawError::NoValidReceiver) => {
+                self.error_message = Some("It isn't possible to assign everyone".into())
+            }
+        }
+    }
+
+    pub(crate) fn display(&mut self, people: &[Person], ctx: &egui::Context) {
+        egui::SidePanel::left("wheel-left").show(ctx, |ui| side_panel(ui, self));
+
+        egui::TopBottomPanel::bottom("wheel-bottom").show(ctx, |ui| bottom_panel(ui, self, people));
+    }
 }
 
 fn side_panel(ui: &mut egui::Ui, wheel: &mut WheelPage) {
@@ -40,17 +60,7 @@ fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
     ui.with_layout(Layout::top_down(Align::Center), |ui| {
         if wheel.hat.givers().len() > 0 {
             if ui.button(RichText::new("Spin Wheel").heading()).clicked() {
-                wheel.error_message = None;
-                match wheel.hat.draw_name(valid_pair) {
-                    Ok(pair) => wheel.drawn_names.push(pair),
-                    Err(DrawError::NoGivers) => {
-                        wheel.error_message = Some("No one left to assign".into())
-                    }
-                    //This case needs to have some 'just draw someone' option
-                    Err(DrawError::NoValidReceiver) => {
-                        wheel.error_message = Some("It isn't possible to assign everyone".into())
-                    }
-                }
+                wheel.spin();
             }
         }
 
@@ -59,9 +69,7 @@ fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
         }
 
         if ui.button("Restart").clicked() {
-            wheel.error_message = None;
-            wheel.hat = Hat::with_people(people.into());
-            wheel.drawn_names.clear();
+            wheel.reset(people);
         }
     });
 }
