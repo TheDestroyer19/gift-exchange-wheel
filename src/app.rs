@@ -1,6 +1,6 @@
 use crate::hat::Person;
 
-use self::page::{Page, PeoplePage};
+use self::page::{Page, PeoplePage, WheelPage};
 
 mod page;
 
@@ -11,6 +11,7 @@ pub struct GiftExchangeApp {
     people: Vec<Person>,
     page: Page,
     people_page: PeoplePage,
+    wheel_page: WheelPage,
     // Example stuff:
     label: String,
 
@@ -25,6 +26,7 @@ impl Default for GiftExchangeApp {
             people: Vec::default(),
             page: Page::default(),
             people_page: PeoplePage::default(),
+            wheel_page: WheelPage::default(),
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 2.7,
@@ -67,12 +69,14 @@ impl eframe::App for GiftExchangeApp {
 
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.page, Page::People, "People");
+                ui.selectable_value(&mut self.page, Page::Wheel, "Wheel");
                 ui.selectable_value(&mut self.page, Page::About, "About");
             });
         });
 
         match self.page {
             Page::People => page::dipslay_people(&mut self.people_page, &mut self.people, ctx),
+            Page::Wheel => page::display_wheel(&mut self.wheel_page, &self.people, ctx),
             Page::About => page::display_about(ctx),
         }
 

@@ -22,7 +22,7 @@ pub struct Pair {
     pub receiver: Person,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Hat {
     givers: Vec<Person>,
     receivers: Vec<Person>,
@@ -74,6 +74,10 @@ impl Hat {
         }
 
         Err(DrawError::NoValidReceiver)
+    }
+
+    pub(crate) fn givers(&self) -> &[Person] {
+        &self.givers
     }
 
     fn valid_solution_exists<F>(&self, validate_pair: &F) -> bool

@@ -1,8 +1,12 @@
 use crate::hat::Person;
 
+mod wheel;
+pub(crate) use wheel::*;
+
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
 pub enum Page {
     People,
+    Wheel,
     About,
 }
 
@@ -49,8 +53,10 @@ pub(crate) fn dipslay_people(page: &mut PeoplePage, people: &mut Vec<Person>, ct
     });
 
     egui::CentralPanel::default().show(ctx, |ui| {
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            let mut to_remove = None;
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                let mut to_remove = None;
                 for (idx, person) in people.iter().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
@@ -65,7 +71,7 @@ pub(crate) fn dipslay_people(page: &mut PeoplePage, people: &mut Vec<Person>, ct
                 if let Some(index) = to_remove {
                     people.remove(index);
                 }
-        });
+            });
     });
 }
 
