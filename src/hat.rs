@@ -80,6 +80,10 @@ impl Hat {
         &self.givers
     }
 
+    pub(crate) fn receivers(&self) -> &[Person] {
+        &self.receivers
+    }
+
     fn valid_solution_exists<F>(&self, validate_pair: &F) -> bool
     where
         F: Fn(&Person, &Person) -> bool,
