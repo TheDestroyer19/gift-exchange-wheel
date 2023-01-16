@@ -7,26 +7,53 @@ use crate::valid_pair;
 
 use super::UiExtensions;
 
+const ACCELERATION: f32 = 2.0;
+const IDLE_SPEED: f32 = 0.4;
+const FULL_SPEED: f32 = 5.0;
+const SPIN_TIME: f32 = 5.0;
+
+#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
+enum WheelAnim {
+    Idle,
+    Windup,
+    HoldAtTopSpeed{
+        start_time: f32
+    },
+    SlowToStop,
+}
+
+impl Default for WheelAnim {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub(crate) struct WheelPage {
     hat: Hat,
     drawn_names: Vec<Pair>,
     error_message: Option<String>,
+    animation: WheelAnim,
     angle: f32,
+    speed: f32,
 }
 
 impl WheelPage {
     fn reset(&mut self, people: &[Person]) {
+        self.animation = WheelAnim::default();
         self.error_message = None;
         self.hat = Hat::with_people(people.into());
         self.drawn_names.clear();
     }
 
     fn spin(&mut self) {
+        self.animation = WheelAnim::Windup;
         self.error_message = None;
         match self.hat.draw_name(valid_pair) {
-            Ok(pair) => self.drawn_names.push(pair),
+            Ok(pair) => {
+                self.drawn_names.push(pair);
+            },
             Err(DrawError::NoGivers) => self.error_message = Some("No one left to assign".into()),
             //This case needs to have some 'just draw someone' option
             Err(DrawError::NoValidReceiver) => {
@@ -36,11 +63,45 @@ impl WheelPage {
     }
 
     pub(crate) fn display(&mut self, people: &[Person], ctx: &egui::Context) {
+        
         egui::SidePanel::left("wheel-left").show(ctx, |ui| side_panel(ui, self));
 
         egui::TopBottomPanel::bottom("wheel-bottom").show(ctx, |ui| bottom_panel(ui, self, people));
 
         egui::CentralPanel::default().show(ctx, |ui| center_spinner(ui, self));
+    }
+
+    fn update_animation(&mut self, ui: &egui::Ui) {
+        let delta_time = ui.input().stable_dt.min(0.1);
+        let time = ui.input().time;
+        match self.animation {
+            WheelAnim::Idle => {
+                self.step_physics(IDLE_SPEED, delta_time);
+            },
+            WheelAnim::Windup => {
+                self.step_physics(FULL_SPEED, delta_time);
+                if self.speed == FULL_SPEED {
+                    self.animation = WheelAnim::HoldAtTopSpeed { start_time: time as f32};
+                }
+            },
+            WheelAnim::HoldAtTopSpeed { start_time } => {
+                self.step_physics(FULL_SPEED, delta_time);
+                if time as f32 - start_time >= SPIN_TIME {
+                    self.animation = WheelAnim::SlowToStop;
+                }
+            },
+            WheelAnim::SlowToStop => {
+                self.step_physics(0.0, delta_time);
+            }
+            
+        }
+    
+    }
+
+    fn step_physics(&mut self, target_speed: f32, delta_time: f32) {
+        let speed_delta = target_speed - self.speed;
+        self.speed += speed_delta.clamp(-delta_time * ACCELERATION, delta_time * ACCELERATION);
+        self.angle = (self.angle + self.speed * delta_time) % std::f32::consts::TAU;
     }
 }
 
@@ -81,6 +142,8 @@ fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
 }
 
 fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
+    wheel.update_animation(ui);
+    
     let text_color = if ui.visuals().dark_mode {
         Color32::from_additive_luminance(196)
     } else {
