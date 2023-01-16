@@ -1,6 +1,6 @@
 use eframe::emath;
 use eframe::epaint::TextShape;
-use egui::{Align, Color32, Frame, Layout, Pos2, Rect, RichText, Shape, Stroke, Vec2, FontId};
+use egui::{Align, Color32, FontId, Frame, Layout, Pos2, Rect, RichText, Shape, Stroke, Vec2};
 
 use crate::hat::{DrawError, Hat, Pair, Person};
 use crate::valid_pair;
@@ -64,10 +64,10 @@ fn side_panel(ui: &mut egui::Ui, wheel: &mut WheelPage) {
 
 fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
     ui.with_layout(Layout::top_down(Align::Center), |ui| {
-        if wheel.hat.givers().len() > 0 {
-            if ui.button(RichText::new("Spin Wheel").heading()).clicked() {
-                wheel.spin();
-            }
+        if !wheel.hat.givers().is_empty()
+            && ui.button(RichText::new("Spin Wheel").heading()).clicked()
+        {
+            wheel.spin();
         }
 
         if let Some(msg) = &wheel.error_message {
@@ -87,11 +87,7 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
         Color32::from_black_alpha(240)
     };
 
-    let colors = [
-        Color32::YELLOW,
-        Color32::GREEN,
-        Color32::RED,
-    ];
+    let colors = [Color32::YELLOW, Color32::GREEN, Color32::RED];
     let stroke = Stroke::new(1.0, text_color);
 
     Frame::canvas(ui.style()).show(ui, |ui| {
@@ -99,7 +95,6 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
         //let time = ui.input().time;
 
         let smaller_dimension = ui.available_width().min(ui.available_height());
-        
 
         let desired_size = smaller_dimension * Vec2::new(1.0, 1.0);
         let (_id, rect) = ui.allocate_space(desired_size);
@@ -107,7 +102,7 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
         let to_screen =
             emath::RectTransform::from_to(Rect::from_x_y_ranges(-1.0..=1.0, -1.0..=1.0), rect);
 
-        let center = to_screen * Pos2::new(0.,0.);
+        let center = to_screen * Pos2::new(0., 0.);
 
         let mut shapes = vec![];
 
@@ -116,34 +111,47 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
         for (idx, person) in wheel.hat.receivers().iter().enumerate() {
             let start_angle = wheel.angle + inner_angle * idx as f32;
             let r = smaller_dimension / 2.0 - 5.0;
-            shapes.push(wedge(center, r, start_angle, inner_angle, colors[idx % colors.len()], stroke));
+            shapes.push(wedge(
+                center,
+                r,
+                start_angle,
+                inner_angle,
+                colors[idx % colors.len()],
+                stroke,
+            ));
 
             let font_id = FontId {
                 size: r * 0.1,
                 ..Default::default()
             };
-            let galley = ui.fonts().layout_no_wrap(person.name.to_string(), font_id, text_color);
+            let galley = ui
+                .fonts()
+                .layout_no_wrap(person.name.to_string(), font_id, text_color);
 
             let dir = Vec2::angled(start_angle + inner_angle / 2.0);
             let xoffset = r - galley.rect.width() - r * 0.1;
             let yoffset = galley.rect.height() / 2.0;
 
-            let text_pos = center +  dir * xoffset + dir.rot90() * yoffset;
+            let text_pos = center + dir * xoffset + dir.rot90() * yoffset;
 
-            let mut text_shape = TextShape::new(text_pos, 
-                galley
-            );
+            let mut text_shape = TextShape::new(text_pos, galley);
             text_shape.angle = start_angle + inner_angle / 2.0;
 
             shapes.push(Shape::Text(text_shape));
         }
 
         ui.painter().extend(shapes);
-
     });
 }
 
-fn wedge(center: Pos2, r: f32, start_angle: f32, inner_angle: f32, fill: Color32, stroke: Stroke) -> Shape {
+fn wedge(
+    center: Pos2,
+    r: f32,
+    start_angle: f32,
+    inner_angle: f32,
+    fill: Color32,
+    stroke: Stroke,
+) -> Shape {
     let arc_points = 30;
     let mut points = Vec::with_capacity(arc_points + 1);
 

@@ -5,24 +5,13 @@ use self::page::{Page, PeoplePage, WheelPage};
 mod page;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct GiftExchangeApp {
     people: Vec<Person>,
     page: Page,
     people_page: PeoplePage,
     wheel_page: WheelPage,
-}
-
-impl Default for GiftExchangeApp {
-    fn default() -> Self {
-        Self {
-            people: Vec::default(),
-            page: Page::default(),
-            people_page: PeoplePage::default(),
-            wheel_page: WheelPage::default(),
-        }
-    }
 }
 
 impl GiftExchangeApp {

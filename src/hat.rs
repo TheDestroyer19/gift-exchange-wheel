@@ -62,10 +62,7 @@ impl Hat {
             let receiver = self.receivers.remove(idx);
 
             if self.valid_solution_exists(&validate_pair) {
-                let pair = Pair {
-                    giver: giver.clone(),
-                    receiver,
-                };
+                let pair = Pair { giver, receiver };
                 return Ok(pair);
             }
 
@@ -90,11 +87,10 @@ impl Hat {
     {
         let mut givers = self.givers.iter().collect();
         let mut receivers = self.receivers.iter().collect();
-        self.valid_solution_exists_inner(&mut givers, &mut receivers, validate_pair)
+        Self::valid_solution_exists_inner(&mut givers, &mut receivers, validate_pair)
     }
 
     fn valid_solution_exists_inner<F>(
-        &self,
         givers: &mut Vec<&Person>,
         receivers: &mut Vec<&Person>,
         validate_pair: &F,
@@ -115,7 +111,7 @@ impl Hat {
         for idx in iter {
             let receiver = receivers.remove(idx);
 
-            if self.valid_solution_exists_inner(givers, receivers, validate_pair) {
+            if Self::valid_solution_exists_inner(givers, receivers, validate_pair) {
                 return true;
             }
 

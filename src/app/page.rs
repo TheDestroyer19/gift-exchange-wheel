@@ -3,7 +3,7 @@ use crate::hat::Person;
 mod wheel;
 pub(crate) use wheel::*;
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum Page {
     People,
     Wheel,
