@@ -16,9 +16,7 @@ const SPIN_TIME: f32 = 5.0;
 enum WheelAnim {
     Idle,
     Windup,
-    HoldAtTopSpeed{
-        start_time: f32
-    },
+    HoldAtTopSpeed { start_time: f32 },
     SlowToStop,
 }
 
@@ -53,7 +51,7 @@ impl WheelPage {
         match self.hat.draw_name(valid_pair) {
             Ok(pair) => {
                 self.drawn_names.push(pair);
-            },
+            }
             Err(DrawError::NoGivers) => self.error_message = Some("No one left to assign".into()),
             //This case needs to have some 'just draw someone' option
             Err(DrawError::NoValidReceiver) => {
@@ -63,7 +61,6 @@ impl WheelPage {
     }
 
     pub(crate) fn display(&mut self, people: &[Person], ctx: &egui::Context) {
-        
         egui::SidePanel::left("wheel-left").show(ctx, |ui| side_panel(ui, self));
 
         egui::TopBottomPanel::bottom("wheel-bottom").show(ctx, |ui| bottom_panel(ui, self, people));
@@ -77,25 +74,25 @@ impl WheelPage {
         match self.animation {
             WheelAnim::Idle => {
                 self.step_physics(IDLE_SPEED, delta_time);
-            },
+            }
             WheelAnim::Windup => {
                 self.step_physics(FULL_SPEED, delta_time);
                 if self.speed == FULL_SPEED {
-                    self.animation = WheelAnim::HoldAtTopSpeed { start_time: time as f32};
+                    self.animation = WheelAnim::HoldAtTopSpeed {
+                        start_time: time as f32,
+                    };
                 }
-            },
+            }
             WheelAnim::HoldAtTopSpeed { start_time } => {
                 self.step_physics(FULL_SPEED, delta_time);
                 if time as f32 - start_time >= SPIN_TIME {
                     self.animation = WheelAnim::SlowToStop;
                 }
-            },
+            }
             WheelAnim::SlowToStop => {
                 self.step_physics(0.0, delta_time);
             }
-            
         }
-    
     }
 
     fn step_physics(&mut self, target_speed: f32, delta_time: f32) {
@@ -143,7 +140,7 @@ fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
 
 fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
     wheel.update_animation(ui);
-    
+
     let text_color = if ui.visuals().dark_mode {
         Color32::from_additive_luminance(196)
     } else {
