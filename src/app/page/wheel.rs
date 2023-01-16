@@ -118,9 +118,14 @@ fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
             let r = smaller_dimension / 2.0 - 5.0;
             shapes.push(wedge(center, r, start_angle, inner_angle, colors[idx % colors.len()], stroke));
 
-            let galley = ui.fonts().layout_no_wrap(person.name.to_string(), FontId::default(), text_color);
+            let font_id = FontId {
+                size: r * 0.1,
+                ..Default::default()
+            };
+            let galley = ui.fonts().layout_no_wrap(person.name.to_string(), font_id, text_color);
+
             let dir = Vec2::angled(start_angle + inner_angle / 2.0);
-            let xoffset = r - galley.rect.width() - 5.0;
+            let xoffset = r - galley.rect.width() - r * 0.1;
             let yoffset = galley.rect.height() / 2.0;
 
             let text_pos = center +  dir * xoffset + dir.rot90() * yoffset;
