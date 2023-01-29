@@ -1,26 +1,62 @@
-use eframe::emath;
-use eframe::epaint::TextShape;
-use egui::{Align, Color32, FontId, Frame, Layout, Pos2, Rect, RichText, Shape, Stroke, Vec2};
+mod spinner;
+
+use egui::{Align, Color32, Layout, RichText};
 
 use crate::hat::{DrawError, Hat, Pair, Person};
 use crate::valid_pair;
 
-use super::UiExtensions;
+use self::spinner::{Spinner, SpinnerTarget};
 
-const ACCELERATION: f32 = 2.0;
-const IDLE_SPEED: f32 = 0.4;
-const FULL_SPEED: f32 = 5.0;
+use super::UiExtensions;
 const SPIN_TIME: f32 = 5.0;
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
-enum WheelAnim {
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+enum WheelState {
     Idle,
-    Windup,
-    HoldAtTopSpeed { start_time: f32 },
-    SlowToStop,
+    Windup(Pair),
+    HoldAtTopSpeed { pair: Pair, start_time: f32 },
+    SlowToStop { pair: Pair },
+    Stopped { pair: Pair },
+}
+impl WheelState {
+    fn try_transition(&mut self, spinner: &mut Spinner, time: f32) {
+        *self = match std::mem::replace(self, Default::default()) {
+            WheelState::Idle => WheelState::Idle,
+            WheelState::Windup(pair) => {
+                if spinner.speed() + 0.05 >= spinner::FULL_SPEED {
+                    WheelState::HoldAtTopSpeed {
+                        pair: pair,
+                        start_time: time,
+                    }
+                } else {
+                    WheelState::Windup(pair)
+                }
+            }
+            WheelState::HoldAtTopSpeed { pair, start_time } => {
+                if time - start_time > SPIN_TIME {
+                    //TODO figure out which item should be selected when the spinner stops
+                    spinner.target = SpinnerTarget::Speed(0.0);
+                    WheelState::SlowToStop { pair }
+                } else {
+                    WheelState::HoldAtTopSpeed {
+                        pair: pair,
+                        start_time: start_time,
+                    }
+                }
+            }
+            WheelState::SlowToStop { pair } => {
+                if spinner.speed() <= 0.05 {
+                    WheelState::Stopped { pair: pair }
+                } else {
+                    WheelState::SlowToStop { pair: pair }
+                }
+            }
+            WheelState::Stopped { pair } => WheelState::Stopped { pair },
+        };
+    }
 }
 
-impl Default for WheelAnim {
+impl Default for WheelState {
     fn default() -> Self {
         Self::Idle
     }
@@ -30,27 +66,32 @@ impl Default for WheelAnim {
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub(crate) struct WheelPage {
     hat: Hat,
+    state: WheelState,
     drawn_names: Vec<Pair>,
     error_message: Option<String>,
-    animation: WheelAnim,
-    angle: f32,
-    speed: f32,
+    spinner: Spinner,
 }
 
 impl WheelPage {
     fn reset(&mut self, people: &[Person]) {
-        self.animation = WheelAnim::default();
+        self.state = WheelState::Idle;
+        self.spinner.target = SpinnerTarget::Speed(spinner::IDLE_SPEED);
+        self.spinner.items = people.to_vec();
         self.error_message = None;
         self.hat = Hat::with_people(people.into());
         self.drawn_names.clear();
     }
 
     fn spin(&mut self) {
-        self.animation = WheelAnim::Windup;
+        match self.state {
+            WheelState::Idle => (),
+            _ => panic!("WheelPage::spin called in wrong state"),
+        }
         self.error_message = None;
         match self.hat.draw_name(valid_pair) {
             Ok(pair) => {
-                self.drawn_names.push(pair);
+                self.spinner.target = SpinnerTarget::Speed(spinner::FULL_SPEED);
+                self.state = WheelState::Windup(pair);
             }
             Err(DrawError::NoGivers) => self.error_message = Some("No one left to assign".into()),
             //This case needs to have some 'just draw someone' option
@@ -65,40 +106,19 @@ impl WheelPage {
 
         egui::TopBottomPanel::bottom("wheel-bottom").show(ctx, |ui| bottom_panel(ui, self, people));
 
-        egui::CentralPanel::default().show(ctx, |ui| center_spinner(ui, self));
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.update_animation(ui);
+            self.spinner.render(ui);
+        });
     }
 
     fn update_animation(&mut self, ui: &egui::Ui) {
         let delta_time = ui.input().stable_dt.min(0.1);
-        let time = ui.input().time;
-        match self.animation {
-            WheelAnim::Idle => {
-                self.step_physics(IDLE_SPEED, delta_time);
-            }
-            WheelAnim::Windup => {
-                self.step_physics(FULL_SPEED, delta_time);
-                if self.speed == FULL_SPEED {
-                    self.animation = WheelAnim::HoldAtTopSpeed {
-                        start_time: time as f32,
-                    };
-                }
-            }
-            WheelAnim::HoldAtTopSpeed { start_time } => {
-                self.step_physics(FULL_SPEED, delta_time);
-                if time as f32 - start_time >= SPIN_TIME {
-                    self.animation = WheelAnim::SlowToStop;
-                }
-            }
-            WheelAnim::SlowToStop => {
-                self.step_physics(0.0, delta_time);
-            }
-        }
-    }
+        let time = ui.input().time as f32;
 
-    fn step_physics(&mut self, target_speed: f32, delta_time: f32) {
-        let speed_delta = target_speed - self.speed;
-        self.speed += speed_delta.clamp(-delta_time * ACCELERATION, delta_time * ACCELERATION);
-        self.angle = (self.angle + self.speed * delta_time) % std::f32::consts::TAU;
+        self.state.try_transition(&mut self.spinner, time);
+
+        self.spinner.step_animation(delta_time);
     }
 }
 
@@ -136,94 +156,4 @@ fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
             wheel.reset(people);
         }
     });
-}
-
-fn center_spinner(ui: &mut egui::Ui, wheel: &mut WheelPage) {
-    wheel.update_animation(ui);
-
-    let text_color = if ui.visuals().dark_mode {
-        Color32::from_additive_luminance(196)
-    } else {
-        Color32::from_black_alpha(240)
-    };
-
-    let colors = [Color32::YELLOW, Color32::GREEN, Color32::RED];
-    let stroke = Stroke::new(1.0, text_color);
-
-    Frame::canvas(ui.style()).show(ui, |ui| {
-        ui.ctx().request_repaint();
-        //let time = ui.input().time;
-
-        let smaller_dimension = ui.available_width().min(ui.available_height());
-
-        let desired_size = smaller_dimension * Vec2::new(1.0, 1.0);
-        let (_id, rect) = ui.allocate_space(desired_size);
-
-        let to_screen =
-            emath::RectTransform::from_to(Rect::from_x_y_ranges(-1.0..=1.0, -1.0..=1.0), rect);
-
-        let center = to_screen * Pos2::new(0., 0.);
-
-        let mut shapes = vec![];
-
-        let inner_angle = std::f32::consts::TAU / wheel.hat.receivers().len() as f32;
-
-        for (idx, person) in wheel.hat.receivers().iter().enumerate() {
-            let start_angle = wheel.angle + inner_angle * idx as f32;
-            let r = smaller_dimension / 2.0 - 5.0;
-            shapes.push(wedge(
-                center,
-                r,
-                start_angle,
-                inner_angle,
-                colors[idx % colors.len()],
-                stroke,
-            ));
-
-            let font_id = FontId {
-                size: r * 0.1,
-                ..Default::default()
-            };
-            let galley = ui
-                .fonts()
-                .layout_no_wrap(person.name.to_string(), font_id, text_color);
-
-            let dir = Vec2::angled(start_angle + inner_angle / 2.0);
-            let xoffset = r - galley.rect.width() - r * 0.1;
-            let yoffset = galley.rect.height() / 2.0;
-
-            let text_pos = center + dir * xoffset + dir.rot90() * yoffset;
-
-            let mut text_shape = TextShape::new(text_pos, galley);
-            text_shape.angle = start_angle + inner_angle / 2.0;
-
-            shapes.push(Shape::Text(text_shape));
-        }
-
-        ui.painter().extend(shapes);
-    });
-}
-
-fn wedge(
-    center: Pos2,
-    r: f32,
-    start_angle: f32,
-    inner_angle: f32,
-    fill: Color32,
-    stroke: Stroke,
-) -> Shape {
-    let arc_points = 30;
-    let mut points = Vec::with_capacity(arc_points + 1);
-
-    if inner_angle < std::f32::consts::TAU - 0.01 {
-        points.push(center);
-    }
-
-    let step = inner_angle / arc_points as f32;
-
-    for a in (0..=arc_points).map(|a| start_angle + a as f32 * step) {
-        points.push(center + r * Vec2::new(a.cos(), a.sin()));
-    }
-
-    Shape::convex_polygon(points, fill, stroke)
 }
