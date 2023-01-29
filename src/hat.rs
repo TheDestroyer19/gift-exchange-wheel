@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct Person {
     pub name: String,
     pub group: String,
@@ -16,7 +16,7 @@ impl Person {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Pair {
     pub giver: Person,
     pub receiver: Person,
@@ -75,10 +75,6 @@ impl Hat {
 
     pub(crate) fn givers(&self) -> &[Person] {
         &self.givers
-    }
-
-    pub(crate) fn receivers(&self) -> &[Person] {
-        &self.receivers
     }
 
     fn valid_solution_exists<F>(&self, validate_pair: &F) -> bool

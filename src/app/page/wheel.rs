@@ -1,6 +1,6 @@
 mod spinner;
 
-use egui::{Align, Color32, Layout, RichText};
+use egui::{Color32, RichText};
 
 use crate::hat::{DrawError, Hat, Pair, Person};
 use crate::valid_pair;
@@ -20,12 +20,12 @@ enum WheelState {
 }
 impl WheelState {
     fn try_transition(&mut self, spinner: &mut Spinner, time: f32) {
-        *self = match std::mem::replace(self, Default::default()) {
+        *self = match std::mem::take(self) {
             WheelState::Idle => WheelState::Idle,
             WheelState::Windup(pair) => {
                 if spinner.speed() + 0.05 >= spinner::FULL_SPEED {
                     WheelState::HoldAtTopSpeed {
-                        pair: pair,
+                        pair,
                         start_time: time,
                     }
                 } else {
@@ -39,16 +39,16 @@ impl WheelState {
                     WheelState::SlowToStop { pair }
                 } else {
                     WheelState::HoldAtTopSpeed {
-                        pair: pair,
-                        start_time: start_time,
+                        pair,
+                        start_time,
                     }
                 }
             }
             WheelState::SlowToStop { pair } => {
                 if spinner.speed() <= 0.05 {
-                    WheelState::Stopped { pair: pair }
+                    WheelState::Stopped { pair }
                 } else {
-                    WheelState::SlowToStop { pair: pair }
+                    WheelState::SlowToStop { pair }
                 }
             }
             WheelState::Stopped { pair } => WheelState::Stopped { pair },
@@ -120,6 +120,15 @@ impl WheelPage {
 
         self.spinner.step_animation(delta_time);
     }
+
+    fn add_result(&mut self, pair: Pair) {
+        self.spinner.items.retain(|p| p != &pair.receiver);
+
+        self.drawn_names.push(pair);
+
+        self.spinner.target = SpinnerTarget::Speed(spinner::IDLE_SPEED);
+        self.state = WheelState::Idle;
+    }
 }
 
 fn side_panel(ui: &mut egui::Ui, wheel: &mut WheelPage) {
@@ -141,19 +150,39 @@ fn side_panel(ui: &mut egui::Ui, wheel: &mut WheelPage) {
 }
 
 fn bottom_panel(ui: &mut egui::Ui, wheel: &mut WheelPage, people: &[Person]) {
-    ui.with_layout(Layout::top_down(Align::Center), |ui| {
-        if !wheel.hat.givers().is_empty()
-            && ui.button(RichText::new("Spin Wheel").heading()).clicked()
-        {
-            wheel.spin();
+    match &wheel.state {
+        WheelState::Idle => {
+            if !wheel.hat.givers().is_empty() {
+                if ui.button(RichText::new("Spin Wheel").heading()).clicked() {
+                    wheel.spin();
+                }
+            } else {
+                ui.label(RichText::new("All names drawn").heading());
+            }
         }
+        WheelState::Windup(pair)
+        | WheelState::HoldAtTopSpeed { pair, .. }
+        | WheelState::SlowToStop { pair, .. } => {
+            ui.label(RichText::new(format!("Spinning for {}", pair.giver.name)).heading());
+        }
+        WheelState::Stopped { pair } => {
+            let pair = pair.clone();
+            ui.horizontal(|ui| {
+                ui.heading(format!(
+                    "{} is giving to {}",
+                    pair.giver.name, pair.receiver.name
+                ));
+                if ui.button(RichText::new("Next Spin").heading()).clicked() {
+                    wheel.add_result(pair)
+                }
+            });
+        }
+    }
+    if let Some(msg) = &wheel.error_message {
+        ui.colored_label(Color32::RED, msg);
+    }
 
-        if let Some(msg) = &wheel.error_message {
-            ui.colored_label(Color32::RED, msg);
-        }
-
-        if ui.button("Restart").clicked() {
-            wheel.reset(people);
-        }
-    });
+    if ui.button("Restart").clicked() {
+        wheel.reset(people);
+    }
 }
