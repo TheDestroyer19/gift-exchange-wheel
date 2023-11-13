@@ -56,11 +56,19 @@ pub(crate) fn dipslay_people(page: &mut PeoplePage, people: &mut Vec<Person>, ct
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
+                let mut to_swap = None;
                 let mut to_remove = None;
+                let count = people.len();
                 for (idx, person) in people.iter().enumerate() {
                     ui.group(|ui| {
                         ui.horizontal(|ui| {
                             ui.person(person);
+                            if idx > 0 && ui.button("/\\").clicked() {
+                                to_swap = Some((idx - 1, idx));
+                            }
+                            if idx < count - 1 && ui.button("\\/").clicked() {
+                                to_swap = Some((idx, idx+1))
+                            }
                             if ui.button("X").clicked() {
                                 to_remove = Some(idx);
                             }
@@ -68,6 +76,9 @@ pub(crate) fn dipslay_people(page: &mut PeoplePage, people: &mut Vec<Person>, ct
                     });
                 }
 
+                if let Some((first, second)) = to_swap {
+                    people.swap(first, second);
+                }
                 if let Some(index) = to_remove {
                     people.remove(index);
                 }
